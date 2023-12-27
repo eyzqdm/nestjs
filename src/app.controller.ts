@@ -1,7 +1,7 @@
 import { Body, Query, Controller, Get, Post, UseInterceptors, UploadedFiles, UploadedFile } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { AppService } from './app.service';
-import fs from 'fs'
+const fs = require('fs')
 
 @Controller('api')
 export class AppController {
@@ -22,10 +22,20 @@ export class AppController {
     uploadFile(@UploadedFiles() files: Array<Express.Multer.File>, @Body() body) {
         console.log('body----', body);
         console.log('files----', files);
+        const fileName = body.name.match(/(.+)\-\d+$/)[1];
+        const chunkDir = 'uploads/chunks_' + fileName;
+
+
+
+        if (!fs.existsSync(chunkDir)) {
+            fs.mkdirSync(chunkDir);
+        }
+        fs.cpSync(files[0].path, chunkDir + '/' + body.name);
+        fs.rmSync(files[0].path);
 
     }
 
-    // 合并图片
+    // 合并文件
     @Get('merge')
     merge(@Query('name') name: string) {
         const chunkDir = 'uploads/chunks_' + name;
@@ -35,11 +45,12 @@ export class AppController {
         let startPos = 0;
         files.map(file => {
             const filePath = chunkDir + '/' + file;
+            //创建可读流，分块读取文件内容，不会一次性将整个文件加载到内存中，可以更有效地处理大型文件
             const stream = fs.createReadStream(filePath);
+            //读取文件内容，首位相接
             stream.pipe(fs.createWriteStream('uploads/' + name, {
                 start: startPos
             }))
-
             startPos += fs.statSync(filePath).size;
         })
     }
