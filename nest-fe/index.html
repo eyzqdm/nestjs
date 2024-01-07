@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://unpkg.com/axios@0.24.0/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <input id="fileInput" type="file" />
+    <script type="module">
+      import { processFile } from './main.js';
+      /* 生成随机字符串 */
+      const generateRandomString = length => {
+        let result = '';
+        let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (let i = 0; i < length; i++) {
+          result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+      };
+      /* 上传文件切片 */
+      const uploadChunks = (chunks, name) => {
+        let chunkPromiseList = [];
+        console.log('chunks>>>>>>', chunks);
+        chunks?.map((chunk, index) => {
+          const data = new FormData();
+          // 使用FormData传递arrayBuffer需要手动设置文件名和文件类型，并arrayBuffer转换为Blob对象
+          const chunkBlob = new Blob([chunk]);
+          // 生成长度为10的随机字符串
+          const randomString = generateRandomString(10);
+          console.log(randomString);
+          data.set('name', name + '-' + index);
+          data.append('file', chunkBlob, name + '_' + index);
+          data.append('path', name + '_' + index);
+          chunkPromiseList.push(axios.post('http://localhost:3000/api/upload', data));
+        });
+        return Promise.all(chunkPromiseList);
+      };
+      /* 合并分片 */
+      const handleMerge = filename => {
+        axios.get(`http://localhost:3000/api/merge?name=${filename}`);
+      };
+
+      const fileInput = document.querySelector('#fileInput');
+
+      fileInput.onchange = async function () {
+        const file = fileInput.files[0];
+        /* 分片 */
+        processFile(file).then(res => {
+          console.log('res>>>>', res.result);
+          const fileName = file?.name;
+          const chunks = res?.result;
+          /* 上传 */
+          uploadChunks(chunks, fileName).then(() => {
+            console.log('uploadFinish>>>>>>');
+            handleMerge(fileName);
+          });
+        });
+      };
+    </script>
+  </body>
+</html>

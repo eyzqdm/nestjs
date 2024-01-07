@@ -14,7 +14,7 @@ export class AppController {
         return this.appService.getHello();
     }
 
-    // /api/upload 处理大文件上传
+    //处理文件上传
     @Post('upload') // Post装饰器 用于将post类型的请求路由到指定处理方法
     // 加载FilesInterceptor拦截器
     @UseInterceptors(FilesInterceptor('file', 10, {
